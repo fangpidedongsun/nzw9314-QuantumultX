@@ -1,19 +1,23 @@
 
 /*
-本脚本仅适用于电视家移动版签到
+本脚本仅适用于电视家签到 测试版，可能有bug
 获取Cookie方法:
 1.将下方[rewrite_local]和[Task]地址复制的相应的区域
-下，
+下
 2.APP登陆账号后，点击首页'每日签到',即可获取Cookie.
+3.非专业人士制作，欢迎各位大佬提出宝贵意见和指导
+
+4. 2020年4月4日 14:30更新
 
 仅测试Quantumult x，Surge、Loon自行测试
 By Macsuny
+感谢 chavyleung
 ~~~~~~~~~~~~~~~~
 Surge 4.0 :
 [Script]
 cron "0 9 * * *" script-path=https://raw.githubusercontent.com/Sunert/Scripts/master/Task/dianshijia.js
 # 获取电视家 Cookie.
-http-request http:\/\/act\.gaoqingdianshi\.com\/\/api\/v4\/sign\/signin\?accelerate=0&ext=0&ticket=,script-path=https://raw.githubusercontent.com/Sunert/Scripts/master/Task/dianshijia.js
+http-request http:\/\/act\.gaoqingdianshi\.com\/\/api\/v4\/sign\/signin\? script-path=https://raw.githubusercontent.com/Sunert/Scripts/master/Task/dianshijia.js
 ~~~~~~~~~~~~~~~~
 
 QX 1.0.6+ :
@@ -22,11 +26,11 @@ QX 1.0.6+ :
 
 [rewrite_local]
 
-http:\/\/act\.gaoqingdianshi\.com\/\/api\/v4\/sign\/signin\?accelerate=0&ext=0&ticket= url script-request-header dianshijia.js
+http:\/\/act\.gaoqingdianshi\.com\/\/api\/v4\/sign\/signin\? url script-request-header dianshijia.js
 ~~~~~~~~~~~~~~~~
 
 */
-const cookieName = '电视家'
+const cookieName = '电视家 📺'
 const signurlKey = 'sy_signurl_dsj'
 const signheaderKey = 'sy_signheader_dsj'
 const sy = init()
@@ -49,64 +53,169 @@ if ($request && $request.method != 'OPTIONS') {
   if (signurlVal) sy.setdata(signurlVal, signurlKey)
   if (signheaderVal) sy.setdata(signheaderVal, signheaderKey)
   sy.msg(cookieName, `获取Cookie: 成功`, ``)
-  sy.done
+  sy.done()
  }
 }
-function sign() {
-    const title = `${cookieName}`
-    let subTitle = ``
-    let detail = ``
-return new Promise((resolve, reject) => {
-    const url = { url: signurlVal, headers: JSON.parse(signheaderVal)}
-    sy.get(url, (error, response, data) => {
-    //sy.log(`${cookieName}, data: ${data}`)
-    const result = JSON.parse(data)
-    if (result.errCode == 0) {
-      subTitle = `签到结果: 成功🎉`
-      detail = `已签到 ${result.data.conDay}天，获取金币${result.data.reward[0].count}，获得奖励${result.data.reward[1].name}`
-      sy.msg(title, subTitle, detail)    
-      } else if  (result.errCode == 6){
-       subTitle = `签到结果: 失败`
-       detail = `原因: ${result.msg}`
-       sy.msg(title, subTitle, detail)
-      }     
-    })    
-   sy.done()
-    let url1 = { url: `http://api.gaoqingdianshi.com/api/coin/info`, headers: JSON.parse(signheaderVal)}
-    sy.get(url1, (error, response, data) => {
-    sy.log(`${cookieName}, data: ${data}`)
-    const result = JSON.parse(data)
-    if (result.errCode == 0) {
-      subTitle = `签到结果: 重复`
-      detail = `金币收益: 💰${result.data.coin}`
-      }
-    let url2 = { url: `http://api.gaoqingdianshi.com/api/cash/info`, headers: JSON.parse(signheaderVal)}
-    sy.get(url2, (error, response, data) => {
-    sy.log(`${cookieName}, data: ${data}`)
-    const result = JSON.parse(data)
-    if (result.errCode == 0) {
-      detail += `  现金收益: 💴${result.data.amount/100}元`
-      } 
-   })      
-      let url3 = { url: `http://act.gaoqingdianshi.com/api/v4/sign/get`, headers: JSON.parse(signheaderVal)}
-    sy.get(url3, (error, response, data) => {
-    sy.log(`${cookieName}, data: ${data}`)
-    const result = JSON.parse(data)
-    if (result.errCode == 0) {
-     var d = `${result.data.currentDay}`
-     subTitle += `已连续签到${d}天`
-      detail += `\n今日获取奖励: ${result.data.recentDays[`${d}`-1].rewards[1].name}  明日奖励: ${result.data.recentDays[`${d}`].rewards[1].name}`
-      
-      }else { 
-      subTitle = `签到结果: 失败`
-      detail = `状态: ${result.msg}`
-      }
-     sy.msg(title, subTitle, detail)
-     })
-    })     
-   })
- sy.done() 
+
+const title = `${cookieName}`
+const coinurl = { url: `http://api.gaoqingdianshi.com/api/coin/info`, headers: JSON.parse(signheaderVal)}
+
+function sign() {      
+     return new Promise((resolve, reject) =>
+     {
+      const url = { url: signurlVal, headers: JSON.parse(signheaderVal)}
+      sy.get(url, (error, response, data) =>
+       {
+      sy.log(`${cookieName}, data: ${data}`)
+      const result = JSON.parse(data)
+      if  (result.errCode == 0) 
+          { subTitle = `签到结果: 成功🎉`
+            var h = result.data.reward.length
+        if (h>1){
+            detail = `已签到 ${result.data.conDay}天，获取金币${result.data.reward[0].count}，获得奖励${result.data.reward[1].name}`
+             cash();
+             share()
+           }else
+             {detail = `已签到 ${result.data.conDay}天，获取金币${result.data.reward[0].count}`
+             cash();
+             share()
+             }
+           }
+    else if  (result.errCode == 6)
+           {
+            subTitle = `签到结果: 失败`
+            detail = `原因: ${result.msg}`
+            sy.msg(title, subTitle, detail)
+           }
+    else   { 
+             all()
+           }         
+       })
+    })
+  sy.done()
 }
+async function all() 
+{ 
+  await total();
+  await cash();
+  await award();
+  await share();
+}
+detail = `签到结果: 重复签到‼️`
+function total() {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+    sy.get(coinurl, (error, response, data) => 
+      {
+      sy.log(`${cookieName}, data: ${data}`)
+      const result = JSON.parse(data)
+      subTitle = `待兑换金币: 💰${result.data.coin}    `    
+   try{
+      for(tempCoin in data){
+       for (i=0;i<result.data.tempCoin.length;i++) {  
+      coinid = result.data.tempCoin[i].id
+      url5 = { url: `http://api.gaoqingdianshi.com/api/coin/temp/exchange?id=`+coinid, headers: JSON.parse(signheaderVal)}
+      sy.get(url5, (error, response, data))    
+        }
+       }
+      }
+     catch(err){
+      err };
+     resolve()
+     })
+   })
+  }) 
+}
+function cash() {
+  return new Promise((resolve, reject) => {
+      let url = { url: `http://api.gaoqingdianshi.com/api/cash/info`, headers: JSON.parse(signheaderVal)}
+      sy.get(url, (error, response, data) => 
+      {
+      sy.log(`data: ${data}`)
+      const result = JSON.parse(data)
+      subTitle += '现金收益: 💶'+ result.data.amount/100+'元 '
+      resolve()
+      })
+   })
+}
+
+function share() {
+ return new Promise((resolve, reject) => {    
+    shareurl = { url: `http://api.gaoqingdianshi.com/api/v4/task/complete?code=1M005`, headers: JSON.parse(signheaderVal)}
+        sy.get(shareurl, (error, response, data) => 
+         {
+           sy.log(`${cookieName}, data: ${data}`)
+           const result = JSON.parse(data)
+           if (result.errCode == 0)  
+              {
+             detail += `\n分享获取金币: 💰${result.data.getCoin}`
+             sy.msg(title, subTitle, detail)
+       sy.get(coinurl, (error, response, data) => 
+      {
+      sy.log(`${cookieName}, data: ${data}`)
+      const result = JSON.parse(data)
+   try{
+       for(tempCoin in data){
+       for (i=0;i<result.data.tempCoin.length;i++)                
+    {  
+      coinid = result.data.tempCoin[i].id
+      url5 = { url: `http://api.gaoqingdianshi.com/api/coin/temp/exchange?id=`+coinid, headers: JSON.parse(signheaderVal)}
+      sy.get(url5, (error, response, data))    
+        }
+       }
+      }
+   catch(err){
+      err };  })
+             }
+         else  if (result.errCode == 4000)  
+             { sy.log('分享结果: 您已分享过,无需重复分享')}  
+        resolve()
+          })
+    })
+}
+
+function award() {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+    let awardurl = { url: `http://act.gaoqingdianshi.com/api/v4/sign/get`, headers: JSON.parse(signheaderVal)}
+     sy.get(awardurl, (error, response, data) => 
+  {
+ //  sy.log(`${cookieName}, data: ${data}`)
+     const result = JSON.parse(data)
+     if (result.errCode == 0) 
+    {
+     var d = `${result.data.currentDay}`
+     for (i=0; i < result.data.recentDays.length;i++)      
+        {
+       if (d == result.data.recentDays[i].day)
+          {  detail += `   已连续签到${d}天`
+       var j = result.data.recentDays[i].rewards.length
+       if (j > 1){
+                detail += `\n今日奖励: ${result.data.recentDays[i].rewards[1].name}   `
+                 } 
+          else   if (j == 1) 
+                 { 
+                detail += `\n今日无奖励   `
+                 }
+        var k = result.data.recentDays[i+1].rewards.length
+        if ( k > 1 ) {
+                detail += `明日奖励: ${result.data.recentDays[i+1].rewards[1].name}`
+           
+                 }  
+           else  { 
+              detail += `明日无奖励`
+        
+                 }
+               }               
+           }  
+          sy.msg(title, subTitle, detail)
+        }
+      })
+    })
+    resolve()
+  })
+}             
+sy.done()
 function init() {
   isSurge = () => {
     return undefined === this.$httpClient ? false : true

@@ -1,16 +1,22 @@
-const cookieName = '微信小程序来客有礼'
-const signurlKey = 'sy_signurl_lkyl'
-const signheaderKey = 'sy_signheader_lkyl'
-const sy = init()
+const cookieName = '趣头条'
+const signurlKey = 'senku_signurl_qtt'
+const signheaderKey = 'senku_signheader_qtt'
+const signbodyKey = 'senku_signbody_qtt'
+const senku = init()
+
 const requrl = $request.url
 if ($request && $request.method != 'OPTIONS') {
-  const signurlVal = requrl
-  const signheaderVal = JSON.stringify($request.headers)
-  sy.log(`signurlVal:${signurlVal}`)
-  sy.log(`signheaderVal:${signheaderVal}`)
-  if (signurlVal) sy.setdata(signurlVal, signurlKey)
-  if (signheaderVal) sy.setdata(signheaderVal, signheaderKey)
-  sy.msg(cookieName, `获取Cookie: 成功🎉`, ``)
+  try {
+    const signurlVal = requrl
+    const signheaderVal = JSON.stringify($request.headers)
+
+    if (signurlVal) senku.setdata(signurlVal, signurlKey)
+    if (signheaderVal) senku.setdata(signheaderVal, signheaderKey)
+    senku.msg(cookieName, `获取Cookie: 成功`, ``)
+    senku.log(`🔔${signurlVal},🔔${signheaderVal}`)
+  } catch (error) {
+    senku.log(`❌error:${error}`)
+  }
 }
 
 function init() {
@@ -56,4 +62,4 @@ function init() {
   }
   return { isSurge, isQuanX, msg, log, getdata, setdata, get, post, done }
 }
-sy.done()
+senku.done()
