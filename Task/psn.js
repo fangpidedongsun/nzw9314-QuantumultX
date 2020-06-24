@@ -1,56 +1,52 @@
 /**
- * 每周Epic游戏限免提醒。
+ * 每月PSN会员限免游戏提醒
  * @author: Peng-YM
- * 更新地址：https://raw.githubusercontent.com/Peng-YM/QuanX/master/Tasks/epic.js
- * 📌 注意 rsshub.app 需要代理访问，将下面的配置加到分流规则中：
- * 1. QX
- * host, rsshub.app, proxy
- * 2. Loon & Surge
- * domain, rsshub.app, proxy
+ * 更新地址：https://raw.githubusercontent.com/Peng-YM/QuanX/master/Tasks/psn.js
  */
-const $ = API("epic");
-checkUpdate().then(() => $done());
 
-async function checkUpdate() {
-    const html = await $.get({
-        url: "https://rsshub.app/epicgames/freegames"
-    })
-        .then((resp) => resp.body);
-    const itemRegex = new RegExp(/<item>[\s\S]*?<\/item>/g);
-    html.match(itemRegex).forEach(async (item) => {
-        let name = item.match(/<title><!\[CDATA\[([\s\S]*?)\]\]><\/title>/)[1];
-        let url = item.match(/<link>([\s\S]*?)<\/link>/)[1];
-        let imgurl = item.match(/<img src=\"(.*)\" referrerpolicy/)[1];
-        let notificationURL = {
-            "open-url": url,
-            "media-url": imgurl
-        }
-        let time = item.match(/<pubDate>([\s\S]*?)<\/pubDate>/)[1];
-        let { description, publisher } = await fetchGameInfo(url);
+const $ = API("psn");
+const url =
+  "https://store.playstation.com/zh-hant-hk/grid/STORE-MSF86012-PLUS_FTT_CONTENT/1";
+$.get({
+  url,
+  headers: {
+    "User-Agent":
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.141 Safari/537.36",
+  },
+})
+  .then((resp) => {
+    const body = resp.body;
+    const data = JSON.parse(body.match(/({"@context"[\s\S]*?)<\/script>/)[1]);
+    $.log(data);
+    return parse(data['@graph']);
+  })
+  .catch((err) => $.error(err))
+  .finally($.done());
+
+function parse(products) {
+    products.forEach(item => {
+        let description = item.description;
+        // clean up css codes
+        description = description.replace(/\s+/g, '');
+        description = description.replace(/br|\\r|\\n/g, '');
+        description = description.replace(/\w*&\w*?;/g, '');
+        description = description.replace(/\w+\s{0,1}\w+="\w+"/g, '')
+        const name = item.name.trim().match(/《([\s\Sz]+?)》/)[1];
         $.notify(
-            `🎮 [Epic 限免]  ${name}`,
-            `⏰ 发布时间: ${formatTime(time)}`,
-            `💡 游戏简介:\n${description}`,
-            notificationURL
-        );
-    });
+            `🎮 [PSN会免] ${name}`,
+            `🗓 时间：${getTime()}`,
+            `📦 类别：${item.category}\n💡 游戏简介：${description}`,
+            {
+                'media-url': `${item.image}`,
+                'open-url': `https://store.playstation.com/zh-hant-hk/product/${item.sku}`
+            }
+        )
+    })
 }
 
-async function fetchGameInfo(url) {
-    const html = await $.get({ url }).then((resp) => resp.body);
-    const description = html.match(/"og:description" content="([\s\S]*?)"/)[1];
-    const publisher = html.match();
-    return {
-        description,
-        publisher
-    };
-}
-
-function formatTime(timestamp) {
-    const date = new Date(timestamp);
-    return `${date.getFullYear()}年${
-        date.getMonth() + 1
-    }月${date.getDate()}日${date.getHours()}时`;
+function getTime(){
+    const today = new Date();
+    return `${today.getFullYear()}年${today.getMonth() + 1}月`;
 }
 
 // prettier-ignore
